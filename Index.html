@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="DB Tracker" />
+  <title>Dumbbell Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; background: #020817; color: #f1f5f9; font-family: 'DM Sans', sans-serif; overscroll-behavior: none; }
+    body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+    input[type=number] { -moz-appearance: textfield; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+    button { font-family: 'DM Sans', sans-serif; -webkit-appearance: none; }
+
+    #app { display: flex; flex-direction: column; height: 100dvh; }
+
+    /* ── Header ── */
+    #header {
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+      padding: 16px 16px 0;
+      flex-shrink: 0;
+      position: sticky; top: 0; z-index: 100;
+    }
+    #header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+    #app-title { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 2px; color: #f1f5f9; }
+    #log-badge { font-size: 11px; color: #475569; background: #1e293b; border-radius: 10px; padding: 3px 8px; display: none; }
+    #header-sub { font-size: 11px; color: #475569; margin-bottom: 12px; }
+
+    /* ── Main tabs ── */
+    #main-tabs { display: flex; border-bottom: 1px solid #1e293b; }
+    .main-tab { padding: 8px 16px; background: transparent; border: none; border-bottom: 2px solid transparent; color: #475569; font-size: 13px; font-weight: 400; cursor: pointer; transition: all 0.15s; margin-bottom: -1px; }
+    .main-tab.active { border-bottom-color: #f1f5f9; color: #f1f5f9; font-weight: 700; }
+
+    /* ── Day tabs ── */
+    #day-tabs { display: flex; gap: 8px; padding: 10px 0 10px; overflow-x: auto; scrollbar-width: none; }
+    #day-tabs::-webkit-scrollbar { display: none; }
+    .day-tab { padding: 7px 14px; border-radius: 20px; border: 1px solid #334155; background: transparent; color: #94a3b8; font-size: 12px; font-weight: 400; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+    .day-tab.active { border: none; color: #020817; font-weight: 700; }
+
+    /* ── Content ── */
+    #content { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+
+    /* ── Day label ── */
+    .day-label { font-size: 13px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px; }
+
+    /* ── Exercise card ── */
+    .ex-card { background: #1e293b; border-radius: 10px; margin-bottom: 10px; overflow: hidden; border: 1px solid #334155; transition: border-color 0.3s; }
+    .ex-card.complete { border-color: rgba(74,222,128,0.4); }
+    .ex-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; cursor: pointer; gap: 8px; user-select: none; }
+    .ex-header-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .ex-name { font-size: 14px; font-weight: 600; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ex-sub { font-size: 11px; color: #64748b; margin-top: 1px; }
+    .ex-chevron { color: #475569; font-size: 14px; flex-shrink: 0; transition: transform 0.2s; }
+    .ex-body { padding: 0 14px 14px; display: none; }
+    .ex-body.open { display: block; }
+
+    /* ── How-to ── */
+    .how-btn { background: #0f172a; border-radius: 6px; padding: 5px 10px; font-size: 11px; cursor: pointer; margin-bottom: 10px; transition: opacity 0.15s; }
+    .how-box { background: #0f172a; border-radius: 0 6px 6px 0; padding: 10px 12px; font-size: 12px; color: #94a3b8; line-height: 1.6; margin-bottom: 12px; display: none; }
+    .how-box.open { display: block; }
+    .yt-link { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 5px 10px; background: rgba(255,0,0,0.13); border: 1px solid rgba(255,0,0,0.33); border-radius: 5px; color: #ff4444; font-size: 11px; font-weight: 600; text-decoration: none; }
+
+    /* ── Rest timer ── */
+    .rest-timer { display: flex; align-items: center; gap: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; transition: border-color 0.3s; }
+    .timer-label { font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 6px; }
+    .timer-btns { display: flex; gap: 6px; }
+    .timer-btn-start { border: none; border-radius: 6px; color: #020817; font-size: 11px; font-weight: 700; padding: 5px 14px; cursor: pointer; }
+    .timer-btn-pause { background: #334155; border: none; border-radius: 6px; color: #f1f5f9; font-size: 11px; font-weight: 700; padding: 5px 14px; cursor: pointer; }
+    .timer-btn-reset { background: transparent; border: 1px solid #334155; border-radius: 6px; color: #64748b; font-size: 11px; padding: 5px 10px; cursor: pointer; }
+
+    /* ── Set rows ── */
+    .sets-header, .set-row { display: grid; grid-template-columns: 40px 80px 70px 36px; gap: 6px; align-items: center; padding: 4px 0; }
+    .sets-header span { font-size: 10px; color: #475569; text-transform: uppercase; }
+    .set-label { font-size: 11px; color: #94a3b8; font-family: monospace; }
+    .set-input { background: #0f172a; border: 1px solid #334155; border-radius: 4px; color: #f1f5f9; padding: 4px 6px; font-size: 12px; width: 100%; font-family: 'DM Sans', sans-serif; }
+    .set-check { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #475569; background: transparent; cursor: pointer; font-size: 14px; color: #f1f5f9; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .set-check.done { background: #22c55e; border-color: #22c55e; }
+    .set-row.done-row { opacity: 0.5; }
+    .sets-note { font-size: 10px; color: #475569; margin-top: 8px; font-style: italic; }
+
+    /* ── Rules box ── */
+    .rules-box { margin-top: 20px; background: #0f172a; border-radius: 10px; padding: 12px 14px; font-size: 11px; color: #64748b; line-height: 1.8; border: 1px solid #1e293b; }
+    .rules-box strong { color: #94a3b8; display: block; margin-bottom: 4px; }
+
+    /* ── History ── */
+    #history-content { flex: 1; overflow-y: auto; padding: 16px; -webkit-overflow-scrolling: touch; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .history-count { font-size: 13px; color: #94a3b8; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+    .clear-btn { background: transparent; border: 1px solid rgba(239,68,68,0.27); color: #ef4444; border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
+    .session-card { background: #1e293b; border-radius: 10px; margin-bottom: 12px; overflow: hidden; border: 1px solid #334155; }
+    .session-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #334155; background: #0f172a; }
+    .session-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .session-day { font-size: 13px; font-weight: 700; color: #f1f5f9; }
+    .session-meta { font-size: 11px; color: #64748b; margin-top: 1px; }
+    .session-body { padding: 10px 14px; }
+    .ex-history { margin-bottom: 10px; }
+    .ex-history-name { font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+    .history-grid { display: grid; grid-template-columns: 50px 1fr 1fr 1fr; gap: 4px; }
+    .history-grid .col-head { font-size: 9px; color: #475569; text-transform: uppercase; }
+    .history-grid .col-set { font-size: 11px; color: #94a3b8; font-family: monospace; }
+    .history-grid .col-val { font-size: 11px; color: #f1f5f9; }
+    .history-grid .col-time { font-size: 11px; color: #475569; }
+    .empty-history { padding: 40px 16px; text-align: center; }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-title { color: #475569; font-size: 14px; }
+    .empty-sub { color: #334155; font-size: 12px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <div id="header">
+    <div id="header-top">
+      <div id="app-title">DUMBBELL TRACKER</div>
+      <div id="log-badge">0 sets logged</div>
+    </div>
+    <div id="header-sub">4×12 · Light → Heavy · Sets auto-save to history</div>
+    <div id="main-tabs">
+      <button class="main-tab active" onclick="switchTab('workout')">Workout</button>
+      <button class="main-tab" onclick="switchTab('history')">📅 History</button>
+    </div>
+    <div id="day-tabs"></div>
+  </div>
+
+  <!-- Workout content -->
+  <div id="content"></div>
+
+  <!-- History content -->
+  <div id="history-content" style="display:none;"></div>
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────
+const SETS = 4;
+const WORKOUTS = {
+  "Back & Biceps": {
+    color: "#4ade80",
+    exercises: [
+      { name: "Cross Body Curl", muscle: "Biceps", lw: 5, hw: 10, how: "Stand holding a DB in each hand. Curl one DB across your body toward the opposite shoulder, keeping elbow at your side. Lower slowly. Alternate arms." },
+      { name: "Twist Curl", muscle: "Biceps", lw: 5, hw: 10, how: "Start in hammer position (palms facing in). As you curl up, rotate your wrist so palm faces up at the top — squeezing the bicep. Reverse on the way down." },
+      { name: "Incline Curl", muscle: "Biceps", lw: 5, hw: 10, how: "Sit back on an incline bench (45–60°), arms hanging straight down. Curl both DBs up without swinging. The stretch at the bottom is the key — let it fully extend." },
+      { name: "Reverse Fly", muscle: "Back / Rear Delt", lw: 5, hw: 8, how: "Hinge forward at hips ~45°, soft knee bend. Arms hang down, slight bend in elbows. Squeeze shoulder blades and lift DBs out to sides in a wide arc. Control down." },
+      { name: "Lawnmower Row", muscle: "Back", lw: 8, hw: 10, how: "Stand in a split stance, brace one hand on your knee. Pull DB from low to hip — like starting a lawnmower — driving elbow back. Keep back flat." },
+      { name: "Incline Dumbbell Row", muscle: "Back", lw: 8, hw: 10, how: "Lie chest-down on an incline bench (~30–45°). Let DBs hang straight down. Row them up toward your hips, squeezing shoulder blades. Keep chest pinned to bench." },
+    ]
+  },
+  "Chest & Triceps": {
+    color: "#60a5fa",
+    exercises: [
+      { name: "Incline Chest Press", muscle: "Chest (Upper)", lw: 8, hw: 10, how: "Set bench to ~30–45°. Press DBs up and slightly inward from chest-level. Lower until elbows are just below the bench. Don't lock out at top." },
+      { name: "Flat Chest Press", muscle: "Chest", lw: 8, hw: 10, how: "Lie flat on bench, DBs at chest level, elbows ~45° from body. Press straight up, bring DBs slightly together at top. Lower with control." },
+      { name: "Push-Ups", muscle: "Chest / Triceps", lw: 0, hw: 0, how: "Hands slightly wider than shoulder-width. Body in a straight line from head to heels. Lower chest to floor, elbows ~45° back. Push up explosively. Scale with knee or incline variation." },
+      { name: "Overhead Tricep Extension", muscle: "Triceps", lw: 5, hw: 8, how: "Hold one DB with both hands overhead, elbows pointing forward. Lower DB behind your head by bending elbows only. Press back up. Keep upper arms glued in place." },
+      { name: "JM Dumbbell Press", muscle: "Triceps", lw: 5, hw: 10, how: "Lie flat, DBs pressed up. Lower them toward your face/forehead by bending elbows outward slightly (like a cross between a skullcrusher and a close-grip press). Press back up in a straight line." },
+      { name: "Kickback", muscle: "Triceps", lw: 5, hw: 8, how: "Hinge forward at hips, upper arms parallel to floor. Extend your forearm back until arm is fully straight. Hold a beat at the top — feel the squeeze. Lower slow." },
+    ]
+  },
+  "Legs": {
+    color: "#f97316",
+    exercises: [
+      { name: "Goblet Squat", muscle: "Quads / Glutes", lw: 8, hw: 10, how: "Hold one DB vertically at your chest with both hands. Feet shoulder-width, toes slightly out. Squat deep, keeping chest tall and knees tracking over toes. Drive through heels to stand." },
+      { name: "Sumo Squat", muscle: "Inner Thighs / Glutes", lw: 8, hw: 10, how: "Feet wider than shoulder-width, toes pointed out ~45°. Hold DB between legs. Lower straight down, knees following toes. Squeeze glutes at the top." },
+      { name: "Calf Raise (DB)", muscle: "Calves", lw: 8, hw: 10, how: "Stand holding DBs at your sides. Rise onto the balls of your feet as high as possible. Hold 1 sec at the top. Lower slowly. For more range, stand on a step edge." },
+    ]
+  }
+};
+
+// ── State ─────────────────────────────────────────────────────────
+let currentTab = 'workout';
+let currentDay = 'Back & Biceps';
+// Per-exercise state: { done: [bool x4], weights: [str x4], reps: [str x4] }
+let exerciseState = {};
+let timers = {}; // per exercise timer state
+
+function initExState(day) {
+  const exs = WORKOUTS[day].exercises;
+  exs.forEach(ex => {
+    if (!exerciseState[day + '|' + ex.name]) {
+      exerciseState[day + '|' + ex.name] = {
+        done: Array(SETS).fill(false),
+        weights: Array.from({length: SETS}, (_, i) => ex.lw === 0 ? '' : i < 2 ? String(ex.lw) : String(ex.hw)),
+        reps: Array(SETS).fill('12'),
+        expanded: false,
+        showHow: false,
+      };
+    }
+  });
+}
+
+// ── Log (localStorage) ────────────────────────────────────────────
+function loadLog() {
+  try { return JSON.parse(localStorage.getItem('db-tracker-log') || '[]'); } catch { return []; }
+}
+function saveLog(log) {
+  try { localStorage.setItem('db-tracker-log', JSON.stringify(log)); } catch {}
+}
+let workoutLog = loadLog();
+
+function updateLogBadge() {
+  const badge = document.getElementById('log-badge');
+  if (workoutLog.length > 0) {
+    badge.style.display = 'block';
+    badge.textContent = workoutLog.length + ' sets logged';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// ── Tab switching ─────────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.main-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', (i === 0 && tab === 'workout') || (i === 1 && tab === 'history'));
+  });
+  document.getElementById('day-tabs').style.display = tab === 'workout' ? 'flex' : 'none';
+  document.getElementById('content').style.display = tab === 'workout' ? 'block' : 'none';
+  document.getElementById('history-content').style.display = tab === 'history' ? 'block' : 'none';
+  if (tab === 'history') renderHistory();
+}
+
+// ── Day tabs ──────────────────────────────────────────────────────
+function renderDayTabs() {
+  const container = document.getElementById('day-tabs');
+  container.innerHTML = '';
+  Object.keys(WORKOUTS).forEach(day => {
+    const btn = document.createElement('button');
+    btn.className = 'day-tab' + (day === currentDay ? ' active' : '');
+    if (day === currentDay) btn.style.background = WORKOUTS[day].color;
+    btn.textContent = day;
+    btn.onclick = () => { currentDay = day; renderDayTabs(); renderWorkout(); };
+    container.appendChild(btn);
+  });
+}
+
+// ── Progress ring SVG ─────────────────────────────────────────────
+function progressRingSVG(completed, total, color) {
+  const r = 15, cx = 20, cy = 20;
+  const circ = 2 * Math.PI * r;
+  const pct = total === 0 ? 0 : completed / total;
+  const offset = circ * (1 - pct);
+  const isComplete = completed === total && total > 0;
+  const stroke = isComplete ? '#22c55e' : completed > 0 ? color : '#334155';
+  const label = isComplete ? '✓' : Math.round(pct * 100) + '%';
+  return `<svg width="40" height="40" style="flex-shrink:0">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1e293b" stroke-width="3"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${stroke}" stroke-width="3"
+      stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+      transform="rotate(-90 ${cx} ${cy})" style="transition:stroke-dashoffset 0.4s ease,stroke 0.3s"/>
+    <text x="${cx}" y="${cy+4}" text-anchor="middle" fill="${stroke}" font-size="8" font-weight="700" font-family="monospace">${label}</text>
+  </svg>`;
+}
+
+// ── Timer per exercise ────────────────────────────────────────────
+function getTimer(key) {
+  if (!timers[key]) timers[key] = { seconds: 60, running: false, finished: false, interval: null };
+  return timers[key];
+}
+
+function renderTimer(exKey) {
+  const t = getTimer(exKey);
+  const r = 22, circ = 2 * Math.PI * r;
+  const offset = circ * (1 - t.seconds / 60);
+  const color = t.finished ? '#22c55e' : t.seconds <= 10 ? '#f97316' : '#60a5fa';
+  const label = t.finished ? 'GO!' : t.seconds + 's';
+  const statusText = t.finished ? '✅ Rest done — next set!' : t.running ? `Resting… ${t.seconds}s left` : '1 min rest timer';
+  const borderColor = t.finished ? '#22c55e55' : t.running ? '#60a5fa33' : '#334155';
+
+  return `<div class="rest-timer" id="timer-${CSS.escape(exKey)}" style="border-color:${borderColor}">
+    <svg width="54" height="54" style="flex-shrink:0">
+      <circle cx="27" cy="27" r="${r}" fill="none" stroke="#1e293b" stroke-width="4"/>
+      <circle cx="27" cy="27" r="${r}" fill="none" stroke="${color}" stroke-width="4"
+        stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+        transform="rotate(-90 27 27)" style="transition:stroke-dashoffset 0.9s linear,stroke 0.3s"/>
+      <text x="27" y="32" text-anchor="middle" fill="${color}" font-size="13" font-weight="700" font-family="monospace">${label}</text>
+    </svg>
+    <div style="flex:1">
+      <div class="timer-label">${statusText}</div>
+      <div class="timer-btns">
+        ${!t.running ? `<button class="timer-btn-start" style="background:${color}" onclick="timerStart('${exKey.replace(/'/g,"\\'")}')">
+          ${t.finished ? 'Again' : 'Start'}</button>` : ''}
+        ${t.running ? `<button class="timer-btn-pause" onclick="timerPause('${exKey.replace(/'/g,"\\'")}')">Pause</button>` : ''}
+        <button class="timer-btn-reset" onclick="timerReset('${exKey.replace(/'/g,"\\'")}')">Reset</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function timerStart(exKey) {
+  const t = getTimer(exKey);
+  if (t.finished || t.seconds === 0) { t.seconds = 60; t.finished = false; }
+  t.running = true;
+  t.interval = setInterval(() => {
+    t.seconds--;
+    if (t.seconds <= 0) { clearInterval(t.interval); t.running = false; t.finished = true; t.seconds = 0; }
+    refreshTimer(exKey);
+  }, 1000);
+  refreshTimer(exKey);
+}
+
+function timerPause(exKey) {
+  const t = getTimer(exKey);
+  clearInterval(t.interval);
+  t.running = false;
+  refreshTimer(exKey);
+}
+
+function timerReset(exKey) {
+  const t = getTimer(exKey);
+  clearInterval(t.interval);
+  t.running = false; t.finished = false; t.seconds = 60;
+  refreshTimer(exKey);
+}
+
+function refreshTimer(exKey) {
+  const el = document.getElementById('timer-' + CSS.escape(exKey));
+  if (el) el.outerHTML = renderTimer(exKey);
+  // re-bind because outerHTML replaces the node
+}
+
+// ── Workout render ────────────────────────────────────────────────
+function renderWorkout() {
+  const day = currentDay;
+  const { color, exercises } = WORKOUTS[day];
+  initExState(day);
+
+  let html = `<div class="day-label" style="color:${color}">${day} — ${exercises.length} exercises</div>`;
+
+  exercises.forEach(ex => {
+    const key = day + '|' + ex.name;
+    const st = exerciseState[key];
+    const completed = st.done.filter(Boolean).length;
+    const isComplete = completed === SETS;
+    const exKeyEsc = key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+    let setsHTML = `<div class="sets-header"><span>Set</span><span>Weight</span><span>Reps</span><span>✓</span></div>`;
+    for (let i = 0; i < SETS; i++) {
+      const heavy = i >= 2;
+      const done = st.done[i];
+      setsHTML += `<div class="set-row ${done ? 'done-row' : ''}">
+        <div class="set-label">S${i+1}${heavy ? ' 🔺' : ''}</div>
+        <input class="set-input" type="number" placeholder="lbs" value="${st.weights[i]}"
+          oninput="setData('${exKeyEsc}',${i},'weight',this.value)" />
+        <input class="set-input" type="number" placeholder="reps" value="${st.reps[i]}"
+          oninput="setData('${exKeyEsc}',${i},'reps',this.value)" />
+        <button class="set-check ${done ? 'done' : ''}" onclick="toggleSet('${exKeyEsc}',${i})">
+          ${done ? '✓' : ''}
+        </button>
+      </div>`;
+    }
+
+    const ytQuery = encodeURIComponent(ex.name + ' dumbbell exercise how to');
+    html += `
+    <div class="ex-card ${isComplete ? 'complete' : ''}" id="card-${CSS.escape(key)}" style="${isComplete ? 'border-color:' + color + '66' : ''}">
+      <div class="ex-header" onclick="toggleCard('${exKeyEsc}')">
+        <div class="ex-header-left">
+          ${progressRingSVG(completed, SETS, color)}
+          <div style="min-width:0">
+            <div class="ex-name">${ex.name}</div>
+            <div class="ex-sub">${ex.muscle} · ${completed}/${SETS} sets</div>
+          </div>
+        </div>
+        <span class="ex-chevron">${st.expanded ? '▲' : '▼'}</span>
+      </div>
+      <div class="ex-body ${st.expanded ? 'open' : ''}" id="body-${CSS.escape(key)}">
+        <button class="how-btn" style="border:1px solid ${color}44; color:${color}"
+          onclick="toggleHow('${exKeyEsc}')">
+          ${st.showHow ? 'Hide' : '📖 How to perform'}
+        </button>
+        <div class="how-box ${st.showHow ? 'open' : ''}" style="border-left:3px solid ${color}">
+          ${ex.how}
+          <br><a class="yt-link" href="https://www.youtube.com/results?search_query=${ytQuery}" target="_blank">▶ Watch on YouTube</a>
+        </div>
+        ${renderTimer(key)}
+        ${setsHTML}
+        <div class="sets-note">🔺 Sets 3–4: bump weight 5–10 lbs · 4×12 · 45s–1.5min rest</div>
+      </div>
+    </div>`;
+  });
+
+  html += `<div class="rules-box">
+    <strong>📋 Your Rules</strong>
+    • Sets 1–2: working weight<br>
+    • Sets 3–4 🔺: +5–10 lbs<br>
+    • If 15 reps feels easy on set 1 → go up next session<br>
+    • Rest: 45 sec – 1.5 min between sets<br>
+    • ✓ a set to save it to your history
+  </div>`;
+
+  document.getElementById('content').innerHTML = html;
+}
+
+function toggleCard(key) {
+  const st = exerciseState[key];
+  if (!st) return;
+  st.expanded = !st.expanded;
+  const body = document.getElementById('body-' + CSS.escape(key));
+  const card = document.getElementById('card-' + CSS.escape(key));
+  if (body) body.classList.toggle('open', st.expanded);
+  // flip chevron
+  const chevron = card ? card.querySelector('.ex-chevron') : null;
+  if (chevron) chevron.textContent = st.expanded ? '▲' : '▼';
+}
+
+function toggleHow(key) {
+  const st = exerciseState[key];
+  if (!st) return;
+  st.showHow = !st.showHow;
+  const body = document.getElementById('body-' + CSS.escape(key));
+  if (!body) return;
+  const howBox = body.querySelector('.how-box');
+  const howBtn = body.querySelector('.how-btn');
+  if (howBox) howBox.classList.toggle('open', st.showHow);
+  if (howBtn) howBtn.textContent = st.showHow ? 'Hide' : '📖 How to perform';
+}
+
+function setData(key, i, field, val) {
+  const st = exerciseState[key];
+  if (!st) return;
+  if (field === 'weight') st.weights[i] = val;
+  if (field === 'reps') st.reps[i] = val;
+}
+
+function toggleSet(key, i) {
+  const st = exerciseState[key];
+  if (!st) return;
+  st.done[i] = !st.done[i];
+
+  if (st.done[i]) {
+    // Save to log
+    const parts = key.split('|');
+    const day = parts[0], exName = parts.slice(1).join('|');
+    const now = new Date();
+    const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    workoutLog.push({ workoutDay: day, exercise: exName, setNum: i + 1, weight: st.weights[i], reps: st.reps[i], date, time, id: Date.now() + Math.random() });
+    saveLog(workoutLog);
+    updateLogBadge();
+  }
+
+  // Re-render just this card's content efficiently
+  const completed = st.done.filter(Boolean).length;
+  const isComplete = completed === SETS;
+  const dayColor = WORKOUTS[currentDay].color;
+
+  // Update progress ring
+  const card = document.getElementById('card-' + CSS.escape(key));
+  if (card) {
+    const ringSlot = card.querySelector('.ex-header-left svg');
+    const tmpDiv = document.createElement('div');
+    tmpDiv.innerHTML = progressRingSVG(completed, SETS, dayColor);
+    if (ringSlot) ringSlot.replaceWith(tmpDiv.firstElementChild);
+    // Update sub label
+    const sub = card.querySelector('.ex-sub');
+    const exName = key.split('|').slice(1).join('|');
+    const ex = WORKOUTS[currentDay].exercises.find(e => e.name === exName);
+    if (sub && ex) sub.textContent = ex.muscle + ' · ' + completed + '/' + SETS + ' sets';
+    // Update border
+    card.style.borderColor = isComplete ? dayColor + '66' : '#334155';
+    card.classList.toggle('complete', isComplete);
+  }
+
+  // Update specific set row
+  const body = document.getElementById('body-' + CSS.escape(key));
+  if (body) {
+    const setRows = body.querySelectorAll('.set-row');
+    if (setRows[i]) setRows[i].classList.toggle('done-row', st.done[i]);
+    const checkBtn = setRows[i] ? setRows[i].querySelector('.set-check') : null;
+    if (checkBtn) {
+      checkBtn.classList.toggle('done', st.done[i]);
+      checkBtn.textContent = st.done[i] ? '✓' : '';
+    }
+  }
+}
+
+// ── History render ────────────────────────────────────────────────
+function renderHistory() {
+  const container = document.getElementById('history-content');
+
+  if (workoutLog.length === 0) {
+    container.innerHTML = `<div class="empty-history">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No workouts logged yet.</div>
+      <div class="empty-sub">Complete sets in any workout to start your history.</div>
+    </div>`;
+    return;
+  }
+
+  // Group by date + day
+  const sessions = {};
+  workoutLog.forEach(e => {
+    const k = e.date + '__' + e.workoutDay;
+    if (!sessions[k]) sessions[k] = { date: e.date, workoutDay: e.workoutDay, entries: [] };
+    sessions[k].entries.push(e);
+  });
+
+  const sorted = Object.values(sessions).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  let html = `<div class="history-header">
+    <div class="history-count">${sorted.length} session${sorted.length !== 1 ? 's' : ''} logged</div>
+    <button class="clear-btn" onclick="clearLog()">Clear all</button>
+  </div>`;
+
+  sorted.forEach(session => {
+    const color = (WORKOUTS[session.workoutDay] || {}).color || '#94a3b8';
+    const byEx = {};
+    session.entries.forEach(e => {
+      if (!byEx[e.exercise]) byEx[e.exercise] = [];
+      byEx[e.exercise].push(e);
+    });
+
+    let exHTML = '';
+    Object.entries(byEx).forEach(([exName, sets]) => {
+      let rows = `<div class="col-head">Set</div><div class="col-head">Weight</div><div class="col-head">Reps</div><div class="col-head">Time</div>`;
+      sets.forEach(s => {
+        rows += `<div class="col-set">S${s.setNum}</div>
+          <div class="col-val">${s.weight ? s.weight + ' lbs' : 'BW'}</div>
+          <div class="col-val">${s.reps || '—'}</div>
+          <div class="col-time">${s.time}</div>`;
+      });
+      exHTML += `<div class="ex-history">
+        <div class="ex-history-name" style="color:${color}">${exName}</div>
+        <div class="history-grid">${rows}</div>
+      </div>`;
+    });
+
+    html += `<div class="session-card">
+      <div class="session-head">
+        <div class="session-dot" style="background:${color}"></div>
+        <div>
+          <div class="session-day">${session.workoutDay}</div>
+          <div class="session-meta">${session.date} · ${session.entries.length} set${session.entries.length !== 1 ? 's' : ''} logged</div>
+        </div>
+      </div>
+      <div class="session-body">${exHTML}</div>
+    </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function clearLog() {
+  if (confirm('Clear all workout history? This cannot be undone.')) {
+    workoutLog = [];
+    saveLog(workoutLog);
+    updateLogBadge();
+    renderHistory();
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+renderDayTabs();
+renderWorkout();
+updateLogBadge();
+</script>
+</body>
+</html>
